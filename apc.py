@@ -4,12 +4,18 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 from matplotlib.dates import DateFormatter, MinuteLocator
 import matplotlib.animation as animation
+import numpy as np
 
 # Create figure for plotting
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
-xs = []
-ys = []
+
+period = 120
+threshold = 3000
+starttime = dt.datetime.now()
+
+xs = np.zeros(period, dtype='datetime64[s]')
+ys = np.zeros(period)
 
 APC_IP = os.environ['APC_IP']
 if APC_IP == None:
@@ -27,8 +33,6 @@ def get_amps():
     amps = output.split()[-1]
     return float(amps) / 10
 
-period = 120
-
 # This function is called periodically from FuncAnimation
 def animate(i, xs, ys):
     data = get_amps() * 230
@@ -36,13 +40,10 @@ def animate(i, xs, ys):
     nowtime = dt.datetime.now()
 
     # Add x and y to lists
-    # xs.append(nowtime.strftime('%H:%M:%S'))
-    xs.append(nowtime)
-    ys.append(data)
-
-    # Limit x and y lists to 120 items
-    xs = xs[-period:]
-    ys = ys[-period:]
+    xs[:-1] = xs[1:]
+    xs[-1] = nowtime
+    ys[:-1] = ys[1:]
+    ys[-1] = data
 
     # Draw x and y lists
     ax.clear()
@@ -50,7 +51,12 @@ def animate(i, xs, ys):
 
     # Format plot
     plt.xticks(rotation=45, ha='right')
-    plt.xlim([nowtime - dt.timedelta(seconds=period-1), nowtime])
+
+    if nowtime - dt.timedelta(seconds=period) > starttime:
+        plt.xlim([nowtime - dt.timedelta(seconds=period), nowtime])
+    else:
+        plt.xlim([starttime, starttime + dt.timedelta(seconds=period)])
+
     # set y axis
     plt.ylim(0, 6000)
     plt.subplots_adjust(bottom=0.30)
@@ -63,6 +69,9 @@ def animate(i, xs, ys):
 
     # Color the part between x axis and the data line
     ax.fill_between(xs, ys, color='blue', alpha=0.2)
+
+    #ax.fill_between(xs, ys, threshold, color='blue', alpha=0.2)
+    ax.fill_between(xs, threshold, ys, where=(ys > threshold), color='orange')
 
 
 # Set up plot to call animate() function periodically
