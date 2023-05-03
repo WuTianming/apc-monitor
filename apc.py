@@ -10,15 +10,16 @@ import numpy as np
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
 
-period = 120
+period = 20
 threshold = 3000
 starttime = dt.datetime.now()
 
-xs = np.zeros(period, dtype='datetime64[s]')
-ys = np.zeros(period)
+xs = np.zeros(period+2, dtype='datetime64[ms]')
+ys = np.zeros(period+2)
 
 APC_IP = os.environ['APC_IP']
 if APC_IP == None:
+    print("set the environment variable \"APC_IP\" to be the IP of the PDU.")
     exit(1)
 
 # run shell command and capture output:
@@ -50,30 +51,29 @@ def animate(i, xs, ys):
     ax.plot(xs, ys)
 
     # Format plot
-    plt.xticks(rotation=45, ha='right')
-
-    if nowtime - dt.timedelta(seconds=period) > starttime:
-        plt.xlim([nowtime - dt.timedelta(seconds=period), nowtime])
-    else:
-        plt.xlim([starttime, starttime + dt.timedelta(seconds=period)])
-
-    # set y axis
-    plt.ylim(0, 6000)
-    plt.subplots_adjust(bottom=0.30)
     plt.title('Power over time')
     plt.ylabel('Power (Watts)')
-
-    # loc = plticker.MultipleLocator(base=1.0) # this locator puts ticks at regular intervals
+    plt.xticks(rotation=45, ha='right')
+    plt.subplots_adjust(bottom=0.20)
     ax.xaxis.set_major_locator(MinuteLocator(interval=1))
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    # Color the part between x axis and the data line
+    # set x axis
+    if nowtime - dt.timedelta(seconds=period) > starttime:
+        ax.set_xlim(nowtime - dt.timedelta(seconds=period), nowtime)
+    else:
+        ax.set_xlim(starttime, starttime + dt.timedelta(seconds=period))
+
+    # set y axis
+    plt.ylim(0, 6000)
+
+    # color the part between x axis and the data line
     ax.fill_between(xs, ys, color='blue', alpha=0.2)
 
-    #ax.fill_between(xs, ys, threshold, color='blue', alpha=0.2)
+    # color the part exceeding the threshold
     ax.fill_between(xs, threshold, ys, where=(ys > threshold), color='orange')
 
 
 # Set up plot to call animate() function periodically
-ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
+ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1100)
 plt.show()
